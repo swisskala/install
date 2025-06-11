@@ -1,3 +1,5 @@
+Hello!
+
 # Optimized Setup Script
 
 A modular system setup script with support for multiple devices and configurations.
