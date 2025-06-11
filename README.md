@@ -1,4 +1,3 @@
-Hello!
 
 # Optimized Setup Script
 
