@@ -1,0 +1,12 @@
+# Surfarch specific configuration
+
+# Gaming-related aliases
+alias steam='prime-run steam'
+
+# Development shortcuts
+alias dev='cd ~/Development'
+alias proj='cd ~/Projects'
+
+# System monitoring
+alias temps='watch -n 1 sensors'
+alias gpu='nvidia-smi'

@@ -1,0 +1,38 @@
+# Global Kitty configuration
+
+# Font configuration
+font_family      UbuntuMono Nerd Font Mono
+bold_font        auto
+italic_font      auto
+bold_italic_font auto
+font_size {{FONT_SIZE_KITTY}}
+
+# Color scheme
+foreground #d8d8d8
+background #181818
+
+# Window settings
+remember_window_size  yes
+initial_window_width  80c
+initial_window_height 24c
+
+# Scrollback
+scrollback_lines 10000
+
+# URLs
+url_style curly
+open_url_with default
+
+# Bell
+enable_audio_bell no
+visual_bell_duration 0.1
+
+# Cursor
+cursor_shape block
+cursor_blink_interval -1
+
+# Key mappings
+map ctrl+shift+c copy_to_clipboard
+map ctrl+shift+v paste_from_clipboard
+map ctrl+shift+up scroll_line_up
+map ctrl+shift+down scroll_line_down

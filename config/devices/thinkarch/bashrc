@@ -1,0 +1,9 @@
+# Thinkarch specific configuration
+
+# Power management
+alias powersave='sudo cpupower frequency-set -g powersave'
+alias performance='sudo cpupower frequency-set -g performance'
+
+# Laptop specific
+alias battery='upower -i /org/freedesktop/UPower/devices/battery_BAT0'
+alias brightness='brightnessctl'
