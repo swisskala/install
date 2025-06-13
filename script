@@ -1,0 +1,179 @@
+#!/bin/bash
+# Script to create minimal package lists with only packages mentioned in the repo
+
+echo "Creating minimal package lists..."
+
+# ============================================
+# PACKAGE LISTS
+# ============================================
+
+# Global packages (from your existing scripts)
+cat > packages/global.list << 'EOF'
+# Global packages - installed on all systems
+# From the original setup scripts
+kitty
+mc
+ncdu
+unzip
+btop
+lsd
+tealdeer
+nano
+EOF
+
+# Arch-specific packages
+cat > packages/arch.list << 'EOF'
+# Arch Linux specific packages
+# Window manager and desktop (from your scripts)
+i3-wm
+picom
+maim
+xclip
+
+# Polkit (from your scripts)
+polkit
+
+# Build tools (needed for yay)
+base-devel
+git
+
+# From the scripts
+expect
+EOF
+
+# Debian-specific packages
+cat > packages/debian.list << 'EOF'
+# Debian/Ubuntu specific packages
+# Window manager and desktop (from your scripts)
+i3
+picom
+xfce4-notifyd
+maim
+xclip
+
+# From your scripts
+expect
+pipx
+
+# Polkit variants (from your scripts)
+policykit-1
+# Note: For Ubuntu 25+, use polkitd and pkexec instead
+EOF
+
+# Device-specific: surfarch (only mentioned packages)
+cat > packages/devices/surfarch.list << 'EOF'
+# Surfarch - Additional packages
+# Add device-specific packages here if needed
+EOF
+
+# Device-specific: thinkarch (only mentioned packages)
+cat > packages/devices/thinkarch.list << 'EOF'
+# Thinkarch - Additional packages
+# Add device-specific packages here if needed
+EOF
+
+# Device-specific: legacy (only mentioned packages)
+cat > packages/devices/legacy.list << 'EOF'
+# Legacy - Additional packages
+# Add device-specific packages here if needed
+EOF
+
+# ============================================
+# SCRIPTS (keep the same)
+# ============================================
+
+# llm-remote for Arch
+cat > scripts/llm-remote-arch << 'EOF'
+#!/bin/bash
+# LLM Remote Client for Arch Linux
+
+SSH_HOST="claude@llm.lan"
+SSH_OPTIONS="-o ConnectTimeout=10 -o BatchMode=yes -t -q -o LogLevel=QUIET"
+
+if [ $# -eq 0 ]; then
+    echo "Usage: llm-remote [llm arguments]"
+    exit 1
+fi
+
+ssh $SSH_OPTIONS $SSH_HOST "llm $(printf '%q ' "$@")" 2>&1
+EOF
+
+# llm-remote for Debian
+cat > scripts/llm-remote-debian << 'EOF'
+#!/bin/bash
+# LLM Remote Client for Debian/Ubuntu
+
+SSH_HOST="claude@llm.lan"
+SSH_OPTIONS="-o ConnectTimeout=10 -o BatchMode=yes -t -q -o LogLevel=QUIET"
+
+if [ $# -eq 0 ]; then
+    echo "Usage: llm-remote [llm arguments]"
+    exit 1
+fi
+
+unbuffer ssh $SSH_OPTIONS $SSH_HOST "llm $(printf '%q ' "$@")" 2>&1 | rich --markdown - 2>/dev/null
+EOF
+
+# Make scripts executable
+chmod +x scripts/llm-remote-*
+
+# ============================================
+# DOCUMENTATION
+# ============================================
+
+# MIGRATION.md
+cat > MIGRATION.md << 'EOF'
+# Migration Guide
+
+## Migrating to the New Modular Structure
+
+### Quick Start
+
+1. **Backup your current configs**:
+   ```bash
+   mkdir -p ~/config-backup
+   cp ~/.bashrc ~/.config/i3/config ~/.config/kitty/kitty.conf ~/config-backup/
+   ```
+
+2. **Copy your configs to the new structure**:
+   - Put common settings in `config/global/*.global`
+   - Put device-specific settings in `config/devices/[device]/*`
+
+3. **Run the setup**:
+   ```bash
+   ./setup.sh --device [your-device]
+   ```
+
+### Configuration Structure
+
+- **Global configs**: Shared across all devices
+- **Device configs**: Override or extend global configs
+- Device configs take priority when both exist
+
+### Adding Custom Packages
+
+Edit the package lists in `packages/`:
+- `global.list` - packages for all systems
+- `arch.list` or `debian.list` - distro-specific
+- `devices/[device].list` - device-specific
+
+### Device Configuration
+
+Edit `config/devices/[device]/device.conf` to set:
+- Font sizes
+- Display settings
+- Hardware-specific options
+EOF
+
+# Remove the accidental 'tree' file if it exists
+rm -f tree
+
+echo "✓ Minimal package lists created!"
+echo ""
+echo "Package lists now contain only packages from your repo:"
+echo "  - kitty, mc, ncdu, unzip, btop, lsd, tealdeer, nano"
+echo "  - i3, picom, maim, xclip"
+echo "  - polkit/policykit-1, expect, pipx"
+echo "  - base-devel, git (for Arch/yay)"
+echo ""
+echo "Device-specific lists are empty - add packages as needed"

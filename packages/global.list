@@ -1,0 +1,10 @@
+# Global packages - installed on all systems
+# From the original setup scripts
+kitty
+mc
+ncdu
+unzip
+btop
+lsd
+tealdeer
+nano

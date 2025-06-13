@@ -1,0 +1,15 @@
+# Debian/Ubuntu specific packages
+# Window manager and desktop (from your scripts)
+i3
+picom
+xfce4-notifyd
+maim
+xclip
+
+# From your scripts
+expect
+pipx
+
+# Polkit variants (from your scripts)
+policykit-1
+# Note: For Ubuntu 25+, use polkitd and pkexec instead

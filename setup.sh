@@ -1,5 +1,5 @@
 #!/bin/bash
-# Main Setup Script - Modular System Configuration
+# Modular System Setup Script
 # Supports multiple devices with global and device-specific configurations
 
 set -euo pipefail  # Exit on error, undefined variables, pipe failures
@@ -21,22 +21,346 @@ SKIP_PACKAGES=false
 SKIP_CONFIGS=false
 SKIP_FONTS=false
 SKIP_LOCALE=false
-VERBOSE=false
+VERBOSE=true
 AUTO_YES=false
+SYSTEM=""
 
-# Source all utilities and libraries
-for util in "$UTILS_PATH"/*.sh; do
-    [[ -f "$util" ]] && source "$util"
-done
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-for lib in "$LIB_PATH"/*.sh; do
-    [[ -f "$lib" ]] && source "$lib"
-done
+# Basic print functions (before sourcing utils)
+print_status() {
+    echo -e "${BLUE}==>${NC} $1"
+}
 
-# Source all step functions
-for step in "$STEPS_PATH"/*.sh; do
-    [[ -f "$step" ]] && source "$step"
-done
+print_success() {
+    echo -e "${GREEN}✓${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}✗${NC} $1" >&2
+}
+
+print_warning() {
+    echo -e "${YELLOW}!${NC} $1"
+}
+
+# Check and source required files
+check_required_files() {
+    local required_libs=(
+        "$LIB_PATH/config_merger.sh"
+        "$LIB_PATH/device_detector.sh"
+        "$LIB_PATH/template_engine.sh"
+    )
+    
+    local required_utils=(
+        "$UTILS_PATH/system_detection.sh"
+        "$UTILS_PATH/user_interaction.sh"
+    )
+    
+    local required_steps=(
+        "$STEPS_PATH/update_system.sh"
+        "$STEPS_PATH/install_software.sh"
+        "$STEPS_PATH/install_fonts.sh"
+        "$STEPS_PATH/configure_locale.sh"
+    )
+    
+    # Check libraries
+    for lib in "${required_libs[@]}"; do
+        if [[ ! -f "$lib" ]]; then
+            print_error "Required library not found: $lib"
+            print_status "Creating placeholder for: $(basename "$lib")"
+            create_placeholder_lib "$(basename "$lib")" "$lib"
+        fi
+    done
+    
+    # Check utilities
+    for util in "${required_utils[@]}"; do
+        if [[ ! -f "$util" ]]; then
+            print_error "Required utility not found: $util"
+            print_status "Creating placeholder for: $(basename "$util")"
+            create_placeholder_util "$(basename "$util")" "$util"
+        fi
+    done
+    
+    # Check steps
+    for step in "${required_steps[@]}"; do
+        if [[ ! -f "$step" ]]; then
+            print_error "Required step not found: $step"
+            print_status "Creating placeholder for: $(basename "$step")"
+            create_placeholder_step "$(basename "$step")" "$step"
+        fi
+    done
+}
+
+# Create placeholder functions for missing files
+create_placeholder_lib() {
+    local name=$1
+    local path=$2
+    
+    case "$name" in
+        "device_detector.sh")
+            cat > "$path" << 'EOF'
+#!/bin/bash
+# Device Detection Library
+
+detect_device() {
+    local hostname=$(hostname)
+    
+    # Check if device config exists
+    if [[ -d "$CONFIG_PATH/devices/$hostname" ]]; then
+        echo "$hostname"
+        return 0
+    fi
+    
+    # Fallback detection
+    case "$hostname" in
+        surfarch|thinkarch|legacy)
+            echo "$hostname"
+            ;;
+        *)
+            echo "generic"
+            ;;
+    esac
+}
+EOF
+            ;;
+        "template_engine.sh")
+            cat > "$path" << 'EOF'
+#!/bin/bash
+# Template Engine Library
+
+process_template() {
+    local input_file=$1
+    local output_file=$2
+    local device_config=$3
+    
+    # Source device config to get variables
+    source "$device_config"
+    
+    # Copy input to output with variable substitution
+    cp "$input_file" "$output_file.tmp"
+    
+    # Replace all {{VARIABLE}} patterns
+    while IFS= read -r line; do
+        if [[ "$line" =~ \{\{([A-Z_]+)\}\} ]]; then
+            var_name="${BASH_REMATCH[1]}"
+            var_value="${!var_name:-}"
+            sed -i "s/{{$var_name}}/$var_value/g" "$output_file.tmp"
+        fi
+    done < "$input_file"
+    
+    mv "$output_file.tmp" "$output_file"
+}
+EOF
+            ;;
+    esac
+    chmod +x "$path"
+}
+
+create_placeholder_util() {
+    local name=$1
+    local path=$2
+    
+    case "$name" in
+        "system_detection.sh")
+            cat > "$path" << 'EOF'
+#!/bin/bash
+# System Detection Utility
+
+detect_system() {
+    if [[ -f /etc/arch-release ]]; then
+        SYSTEM="arch"
+    elif [[ -f /etc/debian_version ]]; then
+        SYSTEM="debian"
+    else
+        SYSTEM="unknown"
+    fi
+    export SYSTEM
+    print_status "Detected system: $SYSTEM"
+}
+EOF
+            ;;
+        "user_interaction.sh")
+            cat > "$path" << 'EOF'
+#!/bin/bash
+# User Interaction Utility
+
+ask_yes_no() {
+    local prompt=$1
+    local default=${2:-n}
+    
+    if [[ "$AUTO_YES" == true ]]; then
+        return 0
+    fi
+    
+    local yn
+    if [[ "$default" == "y" ]]; then
+        read -p "$prompt [Y/n]: " yn
+        yn=${yn:-y}
+    else
+        read -p "$prompt [y/N]: " yn
+        yn=${yn:-n}
+    fi
+    
+    [[ "$yn" =~ ^[Yy] ]]
+}
+EOF
+            ;;
+    esac
+    chmod +x "$path"
+}
+
+create_placeholder_step() {
+    local name=$1
+    local path=$2
+    
+    case "$name" in
+        "update_system.sh")
+            cat > "$path" << 'EOF'
+#!/bin/bash
+# System Update Step
+
+update_system() {
+    print_status "Updating system packages..."
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_status "DRY RUN - Would update system packages"
+        return 0
+    fi
+    
+    if [[ "$SYSTEM" == "arch" ]]; then
+        sudo pacman -Syu --noconfirm
+    elif [[ "$SYSTEM" == "debian" ]]; then
+        sudo apt update && sudo apt upgrade -y
+    fi
+    
+    print_success "System updated"
+}
+EOF
+            ;;
+        "install_software.sh")
+            cat > "$path" << 'EOF'
+#!/bin/bash
+# Software Installation Step
+
+install_yay() {
+    if [[ "$SYSTEM" != "arch" ]]; then
+        return 0
+    fi
+    
+    if command -v yay &> /dev/null; then
+        print_success "yay is already installed"
+        return 0
+    fi
+    
+    print_status "Installing yay AUR helper..."
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_status "DRY RUN - Would install yay"
+        return 0
+    fi
+    
+    # Install dependencies
+    sudo pacman -S --needed --noconfirm git base-devel
+    
+    # Clone and build yay
+    git clone https://aur.archlinux.org/yay.git /tmp/yay
+    cd /tmp/yay
+    makepkg -si --noconfirm
+    cd -
+    rm -rf /tmp/yay
+    
+    print_success "yay installed"
+}
+EOF
+            ;;
+        "install_fonts.sh")
+            cat > "$path" << 'EOF'
+#!/bin/bash
+# Font Installation Step
+
+install_nerd_font() {
+    print_status "Installing Nerd Fonts..."
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_status "DRY RUN - Would install Nerd Fonts"
+        return 0
+    fi
+    
+    # Install font packages based on system
+    if [[ "$SYSTEM" == "arch" ]]; then
+        if command -v yay &> /dev/null; then
+            yay -S --needed --noconfirm ttf-ubuntumono-nerd
+        else
+            print_warning "yay not available, skipping AUR fonts"
+        fi
+    elif [[ "$SYSTEM" == "debian" ]]; then
+        # Download and install manually for Debian
+        mkdir -p ~/.local/share/fonts
+        cd /tmp
+        wget https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/UbuntuMono.zip
+        unzip -o UbuntuMono.zip -d ~/.local/share/fonts/
+        fc-cache -fv
+        cd -
+    fi
+    
+    print_success "Fonts installed"
+}
+EOF
+            ;;
+        "configure_locale.sh")
+            cat > "$path" << 'EOF'
+#!/bin/bash
+# Locale Configuration Step
+
+configure_locale() {
+    print_status "Configuring locale settings..."
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_status "DRY RUN - Would configure locale"
+        return 0
+    fi
+    
+    # Set locale to en_US.UTF-8
+    if [[ "$SYSTEM" == "arch" ]]; then
+        sudo sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+        sudo locale-gen
+        sudo localectl set-locale LANG=en_US.UTF-8
+    elif [[ "$SYSTEM" == "debian" ]]; then
+        sudo locale-gen en_US.UTF-8
+        sudo update-locale LANG=en_US.UTF-8
+    fi
+    
+    print_success "Locale configured"
+}
+EOF
+            ;;
+    esac
+    chmod +x "$path"
+}
+
+# Source all required files
+source_files() {
+    # Source utilities first
+    for util in "$UTILS_PATH"/*.sh; do
+        [[ -f "$util" ]] && source "$util"
+    done
+    
+    # Source libraries
+    for lib in "$LIB_PATH"/*.sh; do
+        [[ -f "$lib" ]] && source "$lib"
+    done
+    
+    # Source steps
+    for step in "$STEPS_PATH"/*.sh; do
+        [[ -f "$step" ]] && source "$step"
+    done
+}
 
 # Show usage
 usage() {
@@ -227,9 +551,11 @@ install_from_lists() {
     elif [[ "$SYSTEM" == "debian" ]]; then
         sudo apt install -y "${unique_packages[@]}"
     fi
+    
+    print_success "Packages installed"
 }
 
-# Deploy configuration files
+# Deploy configuration files using config merger
 deploy_configurations() {
     print_status "Deploying configuration files for device: $DEVICE_NAME"
     
@@ -237,11 +563,12 @@ deploy_configurations() {
         "bashrc:$HOME/.bashrc"
         "bash_profile:$HOME/.bash_profile"
         "profile:$HOME/.profile"
+        "bash_aliases:$HOME/.bash_aliases"
         "kitty.conf:$HOME/.config/kitty/kitty.conf"
         "i3/config:$HOME/.config/i3/config"
         "i3blocks/config:$HOME/.config/i3blocks/config"
         "i3status/config:$HOME/.config/i3status/config"
-        "picom.conf:$HOME/.config/picom.conf"
+        "picom.conf:$HOME/.config/picom/picom.conf"
         "xinitrc:$HOME/.xinitrc"
         "kglobalshortcutsrc:$HOME/.config/kglobalshortcutsrc"
     )
@@ -249,9 +576,11 @@ deploy_configurations() {
     for config_pair in "${configs[@]}"; do
         IFS=':' read -r config_name target_path <<< "$config_pair"
         
-        # Skip if no global config exists
-        local global_config="$CONFIG_PATH/global/${config_name}.global"
-        [[ ! -f "$global_config" ]] && continue
+        # Check if config exists for merging
+        if ! config_exists_for_merge "$config_name" "$DEVICE_NAME"; then
+            [[ "$VERBOSE" == true ]] && print_warning "No config found for: $config_name"
+            continue
+        fi
         
         print_status "Processing: $config_name"
         
@@ -267,19 +596,19 @@ deploy_configurations() {
         if [[ -f "$target_path" ]]; then
             local backup_path="${target_path}.backup.$(date +%Y%m%d_%H%M%S)"
             cp "$target_path" "$backup_path"
-            print_status "Backup created: $backup_path"
+            [[ "$VERBOSE" == true ]] && print_status "Backup created: $backup_path"
         fi
         
-        # Merge global and device-specific configs
+        # Use config merger to handle the merge logic
         merge_configs "$config_name" "$DEVICE_NAME" "$target_path"
         
-        # Process templates with device variables
+        # Process templates with device variables if device.conf exists
         if [[ -f "$CONFIG_PATH/devices/$DEVICE_NAME/device.conf" ]]; then
             process_template "$target_path" "$target_path" "$CONFIG_PATH/devices/$DEVICE_NAME/device.conf"
         fi
-        
-        print_success "Deployed: $config_name"
     done
+    
+    print_success "Configuration files deployed"
 }
 
 # Deploy scripts (like llm-remote)
@@ -309,8 +638,27 @@ main() {
     echo "========================================="
     echo
     
-    # Detect system type
-    detect_system
+    # Check required files and create placeholders if needed
+    check_required_files
+    
+    # Source all files
+    source_files
+    
+    # Detect system type (after sourcing files)
+    if command -v detect_system &> /dev/null; then
+        detect_system
+    else
+        # Fallback if detect_system is not available
+        if [[ -f /etc/arch-release ]]; then
+            SYSTEM="arch"
+        elif [[ -f /etc/debian_version ]]; then
+            SYSTEM="debian"
+        else
+            SYSTEM="unknown"
+        fi
+        export SYSTEM
+        print_status "Detected system: $SYSTEM"
+    fi
     
     # Setup device configuration
     setup_device
@@ -338,7 +686,7 @@ main() {
         install_nerd_font
     fi
     
-    # Step 5: Deploy configurations
+    # Step 5: Deploy configurations using config merger
     if [[ "$SKIP_CONFIGS" != true ]]; then
         deploy_configurations
     fi

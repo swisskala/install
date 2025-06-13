@@ -1,0 +1,12 @@
+#!/bin/bash
+# LLM Remote Client for Debian/Ubuntu
+
+SSH_HOST="claude@llm.lan"
+SSH_OPTIONS="-o ConnectTimeout=10 -o BatchMode=yes -t -q -o LogLevel=QUIET"
+
+if [ $# -eq 0 ]; then
+    echo "Usage: llm-remote [llm arguments]"
+    exit 1
+fi
+
+unbuffer ssh $SSH_OPTIONS $SSH_HOST "llm $(printf '%q ' "$@")" 2>&1 | rich --markdown - 2>/dev/null
