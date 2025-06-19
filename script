@@ -1,0 +1,121 @@
+#!/bin/bash
+# Script to synchronize device configurations
+# Copies surfarch's minimal device.conf to legacy and thinkarch
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Get the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEVICES_DIR="$SCRIPT_DIR/config/devices"
+
+# Check if we're in the right directory
+if [[ ! -d "$DEVICES_DIR" ]]; then
+    echo -e "${RED}Error: config/devices directory not found!${NC}"
+    echo "Expected location: $DEVICES_DIR"
+    echo "Please run this script from the setup_script directory"
+    exit 1
+fi
+
+# Source device config
+SOURCE_DEVICE="surfarch"
+TARGET_DEVICES=("legacy" "thinkarch")
+
+echo -e "${BLUE}Device Configuration Synchronization${NC}"
+echo "===================================="
+echo
+
+# Check if source device exists
+if [[ ! -d "$DEVICES_DIR/$SOURCE_DEVICE" ]]; then
+    echo -e "${RED}Error: Source device directory not found: $DEVICES_DIR/$SOURCE_DEVICE${NC}"
+    exit 1
+fi
+
+if [[ ! -f "$DEVICES_DIR/$SOURCE_DEVICE/device.conf" ]]; then
+    echo -e "${RED}Error: Source device.conf not found: $DEVICES_DIR/$SOURCE_DEVICE/device.conf${NC}"
+    exit 1
+fi
+
+# Show current surfarch config
+echo -e "${BLUE}Current $SOURCE_DEVICE device.conf:${NC}"
+echo "----------------------------------------"
+cat "$DEVICES_DIR/$SOURCE_DEVICE/device.conf"
+echo "----------------------------------------"
+echo
+
+# Ask for confirmation
+read -p "Copy this configuration to legacy and thinkarch? [y/N] " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo -e "${YELLOW}Operation cancelled${NC}"
+    exit 0
+fi
+
+echo
+
+# Backup and copy to each target device
+for device in "${TARGET_DEVICES[@]}"; do
+    echo -e "${BLUE}Processing $device...${NC}"
+    
+    # Check if device directory exists
+    if [[ ! -d "$DEVICES_DIR/$device" ]]; then
+        echo -e "${YELLOW}Warning: $device directory not found, creating it${NC}"
+        mkdir -p "$DEVICES_DIR/$device"
+    fi
+    
+    # Backup existing device.conf if it exists
+    if [[ -f "$DEVICES_DIR/$device/device.conf" ]]; then
+        backup_file="$DEVICES_DIR/$device/device.conf.backup.$(date +%Y%m%d_%H%M%S)"
+        echo -e "  ${YELLOW}→ Backing up existing device.conf to $(basename "$backup_file")${NC}"
+        cp "$DEVICES_DIR/$device/device.conf" "$backup_file"
+    fi
+    
+    # Create new device.conf with appropriate device name
+    echo -e "  ${BLUE}→ Creating new device.conf${NC}"
+    
+    # Read surfarch config and replace device name
+    {
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^DEVICE_NAME= ]]; then
+                echo "DEVICE_NAME=\"$device\""
+            else
+                echo "$line"
+            fi
+        done < "$DEVICES_DIR/$SOURCE_DEVICE/device.conf"
+    } > "$DEVICES_DIR/$device/device.conf"
+    
+    echo -e "  ${GREEN}✓ Successfully updated $device/device.conf${NC}"
+    echo
+done
+
+echo -e "${GREEN}✓ Configuration synchronization complete!${NC}"
+echo
+
+# Show summary
+echo -e "${BLUE}Summary of changes:${NC}"
+echo "==================="
+for device in "${TARGET_DEVICES[@]}"; do
+    echo -e "${GREEN}✓${NC} $device/device.conf - Updated with minimal configuration"
+    if [[ -f "$DEVICES_DIR/$device/device.conf.backup."* ]]; then
+        echo "  Backup saved with timestamp"
+    fi
+done
+
+echo
+echo -e "${BLUE}All devices now have the same minimal configuration:${NC}"
+echo "- DEVICE_NAME (unique per device)"
+echo "- FONT_SIZE_KITTY"
+echo "- FONT_SIZE_I3" 
+echo "- FONT_SIZE_I3BAR"
+echo "- WALLPAPER"
+echo "- EXTRA_PACKAGES"
+
+echo
+echo -e "${YELLOW}Note:${NC} The extensive configuration options previously in legacy/thinkarch"
+echo "have been backed up and are no longer active."
