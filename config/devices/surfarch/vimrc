@@ -1,0 +1,7 @@
+augroup LocalFiles
+    autocmd!
+    autocmd BufNewFile,BufRead *.local setlocal filetype=conf
+augroup END
+
+set clipboard=unnamedplus
+
