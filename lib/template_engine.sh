@@ -1,10 +1,24 @@
- local variables=$(grep -E '^[A-Z_]+=' "$device_config" | cut -d= -f1)
+# Render a template file with variables from a config file
+# Usage: render_template "template_file" "device_config" "output_file"
+render_template() {
+  local template_file=$1
+  local device_config=$2
+  local output_file=$3
+
+  local temp_file
+  temp_file=$(mktemp)
+
+  cp "$template_file" "$temp_file"
+
+  # Load config variables
+  source "$device_config"
+  local variables=$(grep -E '^[A-Z_]+=' "$device_config" | cut -d= -f1)
 
   # Replace each variable
   for var in $variables; do
     local value="${!var}"
     # Escape special characters in value for sed
-    value=$(echo "$value" | sed 's/[[\.*^$()+?{|]/\\&/g')
+    value=$(echo "$value" | sed 's/[\\.*^$()+?{}|[\]]/\\&/g')
     # Replace {{VARIABLE}} with value
     sed -i "s/{{$var}}/$value/g" "$temp_file"
   done
@@ -27,7 +41,8 @@ validate_template() {
   local device_config=$2
 
   local missing_vars=()
-  local template_vars=$(list_template_vars "$template_file")
+  local template_vars
+  template_vars=$(list_template_vars "$template_file")
 
   # Source device config
   source "$device_config"
@@ -38,14 +53,10 @@ validate_template() {
     fi
   done
 
-  if [[ ${#missing_vars[@]} -gt 0 ]]; then
-    print_warning "Missing variables in device config:"
-    for var in "${missing_vars[@]}"; do
-      echo "  - $var"
-    done
+  if [[ ${#missing_vars[@]} -ne 0 ]]; then
+    echo "Missing variables in config: ${missing_vars[*]}"
     return 1
   fi
 
   return 0
 }
-
