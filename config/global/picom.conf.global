@@ -1,28 +1,40 @@
-# Global Picom configuration
-
-# Backend
 backend = "glx";
-glx-no-stencil = true;
-glx-copy-from-front = false;
 
-# Opacity
-active-opacity = 1;
+opacity-rule = [
+  "100:class_g = 'kitty'",
+  "100:class_g = 'virt-manager'",
+  "100:class_g = 'looking-glass-client'"
+];
+
+active-opacity = 0.8;
 inactive-opacity = 0.9;
-frame-opacity = 1;
+frame-opacity = 1.0;
 inactive-opacity-override = false;
 
-# Fading
+shadow = true;
+
 fading = true;
-fade-delta = 4;
 fade-in-step = 0.03;
 fade-out-step = 0.03;
 
-# Other
-mark-wmwin-focused = true;
-mark-ovredir-focused = true;
-detect-rounded-corners = true;
-detect-client-opacity = true;
-vsync = true;
-unredir-if-possible = false;
-detect-transient = true;
-detect-client-leader = true;
+blur: {
+  method = "dual_kawase";
+  strength = 5;
+  background = false;
+  background-frame = false;
+  background-fixed = false;
+}
+
+
+blur-background-exclude = [
+  "window_type = 'dock'",
+  "window_type = 'desktop'",
+  "class_g = 'i3-frame'",
+  "class_g = 'Conky'",
+  "class_g = 'Polybar'",
+  "class_g = 'Rofi'",
+  "class_g = 'slop'",
+  "class_g = 'looking-glass-client'",
+  "class_g = 'virt-manager'",
+  "name = 'Notification'"
+];

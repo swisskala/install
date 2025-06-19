@@ -1,34 +1,4 @@
-#!/bin/bash
-# Template Engine Library
-# Processes configuration templates with variable substitution
-
-# Process template file with variable substitution
-# Usage: process_template "input_file" "output_file" "device_config_file"
-process_template() {
-  local input_file=$1
-  local output_file=$2
-  local device_config=$3
-
-  if [[ ! -f "$input_file" ]]; then
-    print_error "Template input file not found: $input_file"
-    return 1
-  fi
-
-  if [[ ! -f "$device_config" ]]; then
-    print_warning "Device config not found: $device_config"
-    # Don't fail, just skip processing
-    return 0
-  fi
-
-  # Source device config to get variables
-  source "$device_config"
-
-  # Create temp file
-  local temp_file="${output_file}.tmp"
-  cp "$input_file" "$temp_file"
-
-  # Get all variables from device config
-  local variables=$(grep -E '^[A-Z_]+=' "$device_config" | cut -d= -f1)
+ local variables=$(grep -E '^[A-Z_]+=' "$device_config" | cut -d= -f1)
 
   # Replace each variable
   for var in $variables; do
@@ -78,3 +48,4 @@ validate_template() {
 
   return 0
 }
+
