@@ -5,7 +5,6 @@ for_window [class="kitty"] border none
 
 for_window [class="discord"] border none
 
-
 workspace_layout tabbed
 
 bindsym $mod+Shift+s exec maim -s | xclip -selection clipboard -t image/png
@@ -27,6 +26,10 @@ bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume @DEFAULT
 bindsym XF86AudioLowerVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ -10% && $refresh_i3status
 bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ toggle && $refresh_i3status
 bindsym XF86AudioMicMute exec --no-startup-id pactl set-source-mute @DEFAULT_SOURCE@ toggle && $refresh_i3status
+
+ bindsym $mod+Shift+End exec --no-startup-id systemctl poweroff
+ bindsym $mod+Shift+Delete exec --no-startup-id systemctl suspend
+
 
 # Use Mouse+$mod to drag floating windows to their wanted position
 floating_modifier $mod
@@ -155,8 +158,8 @@ bar {
 }
 
 
-exec_always --no-startup-id feh --bg-center /home/arch/Pictures/wallpaper.png
 
+exec_always --no-startup-id feh --bg-center --randomize ~/Pictures/Wallpapers/ 
 
 exec --no-startup-id picom -c
 
